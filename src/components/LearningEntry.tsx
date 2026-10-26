@@ -1,19 +1,17 @@
+import type { LearningEntryData } from "../types/LearningEntryData";
+
 type LearningEntryProps = {
-  topic: string;
-  date: string;
-  learned: string;
-  confidence: number;
-  personalthoughts: string;
+  entry: LearningEntryData;
 };
 
-function LearningEntry({ topic,date,learned,confidence,personalthoughts }: LearningEntryProps) {
+function LearningEntry({ entry}: LearningEntryProps) {
   return (
     <article>
-      <h2>{topic}</h2>
-      <p>Date: {date}</p>
-      <p>{learned}</p>
-      <p>Confidence: {confidence} / 5</p>
-      <p>{personalthoughts}</p>
+      <h2>{entry.topic}</h2>
+      <p>Date: {entry.date}</p>
+      <p>{entry.learned}</p>
+      <p>Confidence: {entry.confidence} / 5</p>
+      <p>{entry.personalthoughts}</p>
     </article>
   );
 }
