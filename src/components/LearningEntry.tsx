@@ -4,7 +4,7 @@ type LearningEntryProps = {
   entry: LearningEntryData;
 };
 
-function LearningEntry({ entry}: LearningEntryProps) {
+function LearningEntry({ entry }: LearningEntryProps) {
   return (
     <article>
       <h2>{entry.topic}</h2>

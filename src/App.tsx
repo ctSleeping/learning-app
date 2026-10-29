@@ -23,10 +23,11 @@ const secondEntry: LearningEntryData = {
 
 const initialEntries: LearningEntryData[] = [firstEntry, secondEntry];
 
-
 function App() {
   const studentName: string = "Christian Tiensuu";
   const [entries, setEntries] = useState<LearningEntryData[]>(initialEntries);
+  const [serverEntries, setServerEntries] = useState<LearningEntryData[]>([]);
+  const [loadError, setLoadError] = useState("");
 
   const [topic, setTopic] = useState("");
   const [date, setDate] = useState("");
@@ -34,45 +35,57 @@ function App() {
   const [confidence, setConfidence] = useState(1);
   const [personalthoughts, setPersonalthoughts] = useState("");
 
+  async function loadServerEntries() {
+    setLoadError("");
+    try {
+      const response = await fetch("http://localhost:3001/api/entries");
+      if (!response.ok) throw new Error("Could not load entries");
+      const data: LearningEntryData[] = await response.json();
+      setServerEntries(data);
+    } catch {
+      setLoadError("Could not connect to the backend.");
+    }
+  }
+
   function handleAddEntry() {
-  // Validointi
-  if (topic.trim() === "" || learned.trim() === "") {
-    alert("Topic and What I learned can't be empty.");
-    return;
+    // Validointi
+    if (topic.trim() === "" || learned.trim() === "") {
+      alert("Topic and What I learned can't be empty.");
+      return;
+    }
+    if (confidence < 1 || confidence > 5) {
+      alert("Confidence must be between 1 and 5.");
+      return;
+    }
+
+    // Uuden entryn luonti
+    const newEntry: LearningEntryData = {
+      id: Date.now(),
+      topic: topic,
+      date: date,
+      learned: learned,
+      confidence: confidence,
+      personalthoughts: personalthoughts,
+    };
+
+    // Stateen lisäys
+    setEntries((currentEntries) => [...currentEntries, newEntry]);
+
+    // Formin resetointi
+    setTopic("");
+    setDate("");
+    setLearned("");
+    setConfidence(1);
+    setPersonalthoughts("");
   }
-  if (confidence < 1 || confidence > 5) {
-    alert("Confidence must be between 1 and 5.");
-    return;
-  }
 
-  // Uuden entryn luonti
-  const newEntry: LearningEntryData = {
-    id: Date.now(),
-    topic: topic,
-    date: date,
-    learned: learned,
-    confidence: confidence,
-    personalthoughts: personalthoughts,
-  };
-
-  // Stateen lisäys
-  setEntries((currentEntries) => [...currentEntries, newEntry]);
-
-  // Formin resetointi
-  setTopic("");
-  setDate("");
-  setLearned("");
-  setConfidence(1);
-  setPersonalthoughts("");
-}
-
-    return (
+  return (
     <main>
       <h1>My Learning</h1>
       <p>Fullstack Project</p>
       <p>Student: {studentName}</p>
 
-    <form>
+      <form>
         <label htmlFor="topic">Topic</label>
         <input
           id="topic"
@@ -119,14 +132,26 @@ function App() {
         />
         <br></br>
         <button type="button" onClick={handleAddEntry}>
-        Add entry
+          Add entry
         </button>
-        </form>
+      </form>
 
       {entries.map((entry) => (
         <LearningEntry key={entry.id} entry={entry} />
       ))}
 
+      <section>
+        <h2>Entries from the backend</h2>
+        <button type="button" onClick={loadServerEntries}>
+          Load from backend
+        </button>
+        {loadError && <p>{loadError}</p>}
+        <ul>
+          {serverEntries.map((entry) => (
+            <li key={entry.id}>{entry.topic}</li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }
