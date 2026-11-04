@@ -1,31 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from "react";
 import LearningEntry from "./components/LearningEntry";
 import type { LearningEntryData } from "./types/LearningEntryData";
 import './App.css'
 
-const firstEntry: LearningEntryData = {
-  id: 1,
-  topic: "React Components",
-  date: "2026-10-21",
-  learned: "Components help divide the UI into reusable parts.",
-  confidence: 5,
-  personalthoughts: "Seems interesting!",
-};
-
-const secondEntry: LearningEntryData = {
-  id: 2,
-  topic: "Birthday Plans",
-  date: "2026-10-21",
-  learned: "Liver will suffer",
-  confidence: 5,
-  personalthoughts: "This is where the personal thoughts will go I think to myself, yes",
-};
-
-const initialEntries: LearningEntryData[] = [firstEntry, secondEntry];
-
 function App() {
   const studentName: string = "Christian Tiensuu";
-  const [entries, setEntries] = useState<LearningEntryData[]>(initialEntries);
   const [serverEntries, setServerEntries] = useState<LearningEntryData[]>([]);
   const [loadError, setLoadError] = useState("");
 
@@ -34,6 +13,25 @@ function App() {
   const [learned, setLearned] = useState("");
   const [confidence, setConfidence] = useState(1);
   const [personalthoughts, setPersonalthoughts] = useState("");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadInitialEntries() {
+      try {
+        const response = await fetch("http://localhost:3001/api/entries");
+        if (!response.ok) throw new Error("Could not load entries");
+        const data: LearningEntryData[] = await response.json();
+        if (!ignore) setServerEntries(data);
+      } catch {
+        if (!ignore) setLoadError("Could not load entries from the backend.");
+      }
+    }
+
+    void loadInitialEntries();
+    return () => { ignore = true; };
+  }, []);
 
   async function loadServerEntries() {
     setLoadError("");
@@ -42,15 +40,22 @@ function App() {
       if (!response.ok) throw new Error("Could not load entries");
       const data: LearningEntryData[] = await response.json();
       setServerEntries(data);
-    } catch {
-      setLoadError("Could not connect to the backend.");
+    } catch (error) {
+      setLoadError("Could not load entries from the backend.");
+      throw error;
     }
   }
 
-  function handleAddEntry() {
+  async function handleAddEntry() {
+    setMessage("");
+
     // Validointi
     if (topic.trim() === "" || learned.trim() === "") {
       alert("Topic and What I learned can't be empty.");
+      return;
+    }
+    if (date === "") {
+      alert("Please choose a date.");
       return;
     }
     if (confidence < 1 || confidence > 5) {
@@ -58,18 +63,25 @@ function App() {
       return;
     }
 
-    // Uuden entryn luonti
-    const newEntry: LearningEntryData = {
-      id: Date.now(),
-      topic: topic,
-      date: date,
-      learned: learned,
-      confidence: confidence,
-      personalthoughts: personalthoughts,
+    const newEntry = {
+      topic,
+      date,
+      learned,
+      confidence: Number(confidence),
+      personalthoughts,
     };
 
-    // Stateen lisäys
-    setEntries((currentEntries) => [...currentEntries, newEntry]);
+    try {
+      const response = await fetch("http://localhost:3001/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEntry),
+      });
+      if (!response.ok) throw new Error("Could not save entry");
+    } catch {
+      setMessage("Saving failed. Please try again.");
+      return;
+    }
 
     // Formin resetointi
     setTopic("");
@@ -77,6 +89,13 @@ function App() {
     setLearned("");
     setConfidence(1);
     setPersonalthoughts("");
+
+    try {
+      await loadServerEntries();
+      setMessage("Entry saved successfully.");
+    } catch {
+      setMessage("Entry was saved, but the list could not be refreshed.");
+    }
   }
 
   return (
@@ -134,23 +153,22 @@ function App() {
         <button type="button" onClick={handleAddEntry}>
           Add entry
         </button>
+        {message && <p>{message}</p>}
       </form>
-
-      {entries.map((entry) => (
-        <LearningEntry key={entry.id} entry={entry} />
-      ))}
 
       <section>
         <h2>Entries from the backend</h2>
-        <button type="button" onClick={loadServerEntries}>
+        <button
+          type="button"
+          onClick={() => { void loadServerEntries().catch(() => {}); }}
+        >
           Load from backend
         </button>
         {loadError && <p>{loadError}</p>}
-        <ul>
-          {serverEntries.map((entry) => (
-            <li key={entry.id}>{entry.topic}</li>
-          ))}
-        </ul>
+
+        {serverEntries.map((entry) => (
+          <LearningEntry key={entry.id} entry={entry} />
+        ))}
       </section>
     </main>
   );
